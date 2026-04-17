@@ -31,19 +31,41 @@ async def cmd_status(message: Message) -> None:
     reserve = user["reserve"]
     income_date_iso = user["next_income_date"]
 
+    period_start_date_iso = user["period_start_date"]
+    period_available = user["period_available"]
+
     result = evaluate_purchase(0, balance, reserve, income_date_iso)
     days = result["days"]
     limit = result["limit"]
     available = result["available"]
 
-    # Financial health: available / (available + reserve)
-    total = available + reserve
-    health_ratio = available / total if total > 0 else 0
+    today = date.today()
+    income_date = date.fromisoformat(income_date_iso)
+    try:
+        start_date = date.fromisoformat(period_start_date_iso)
+    except (ValueError, TypeError):
+        start_date = today
+
+    total_days = max((income_date - start_date).days, 1)
+    days_passed = max((today - start_date).days, 0)
+
+    # Financial health: actual available vs ideal available
+    ideal_available = period_available * (1.0 - (days_passed / total_days))
+    ideal_available = max(ideal_available, 0.0)
+
+    if ideal_available > 0:
+        health_ratio = available / ideal_available
+    else:
+        health_ratio = 1.0 if available >= 0 else 0.0
+
     bar = _health_bar(health_ratio)
 
-    # Forecast
-    income_date = date.fromisoformat(income_date_iso)
-    forecast = _forecast(available, limit, days)
+    # Forecast based on historical average spend
+    spent = max(period_available - available, 0.0)
+    days_spent_for_avg = max(days_passed, 1)
+    average_spend = spent / days_spent_for_avg
+
+    forecast = _forecast(available, average_spend, days)
 
     await message.answer(
         f"📊 *Твой финансовый статус*\n\n"
@@ -72,23 +94,22 @@ def _health_bar(ratio: float, length: int = 12) -> str:
     return f"{emoji} `[{bar}]` {pct}%"
 
 
-def _forecast(available: float, limit: float, days_until_income: int) -> str:
-    if limit <= 0:
-        return "⚠️ *Прогноз:* Нет доступных средств. Дождись зарплаты."
+def _forecast(available: float, average_spend: float, days_until_income: int) -> str:
+    if average_spend <= 0:
+        return "✅ *Прогноз:* Твои средние траты нулевые. Денег до зарплаты точно хватит! 🎉"
 
-    days_budget_covers = available / limit
+    days_budget_covers = available / average_spend
     deficit = days_until_income - days_budget_covers
 
     if deficit <= 0:
         return (
-            f"✅ *Прогноз:* Деньги должны дотянуть до зарплаты. "
-            f"При текущем режиме у тебя останется запас на "
-            f"`{abs(deficit):.1f}` дн. 🎉"
+            f"✅ *Прогноз:* При твоём среднем расходе (`{average_spend:,.2f}`/день) "
+            f"деньги дотянут до зарплаты. Запас: `{abs(deficit):.1f}` дн. 🎉"
         )
     else:
         return (
-            f"⚠️ *Прогноз:* При текущих расходах деньги кончатся "
-            f"через `{days_budget_covers:.1f}` дн. — за "
+            f"⚠️ *Прогноз:* При текущих тратах (`{average_spend:,.2f}`/день) "
+            f"деньги кончатся через `{days_budget_covers:.1f}` дн. — за "
             f"`{deficit:.1f}` дн. до зарплаты.\n"
             f"Сократи расходы до `{available / days_until_income:,.2f}` в день!"
         )
