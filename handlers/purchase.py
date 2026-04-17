@@ -22,8 +22,8 @@ router = Router()
 # Words to strip when extracting description
 _STOP_WORDS = {"want", "buy", "for", "som", "rub", "хочу", "купить", "за", "сом", "руб"}
 
-# Regex: grab the first numeric token (integer or decimal)
-_NUMBER_RE = re.compile(r"\b(\d+(?:[.,]\d+)?)\b")
+# Regex: grab numeric tokens (integer or decimal) more strictly
+_NUMBER_RE = re.compile(r"(?<!\d)(\d+(?:[.,]\d+)?)(?!\d)")
 
 
 # ─────────────── "💳 Проверить покупку" button ────────────────────
@@ -144,18 +144,19 @@ def _parse_purchase(text: str) -> tuple[float | None, str]:
         "300 coffee", "coffee 300", "300",
         "want to buy coffee for 300", "хочу купить кофе за 250"
     """
-    match = _NUMBER_RE.search(text)
-    if not match:
+    matches = _NUMBER_RE.findall(text)
+    if not matches:
         return None, text
 
-    amount_str = match.group(1).replace(",", ".")
+    # Use the first number found as the amount
+    amount_str = matches[0].replace(",", ".")
     try:
         amount = float(amount_str)
     except ValueError:
         return None, text
 
     # Remove the matched number from the description
-    description = text[: match.start()] + text[match.end() :]
+    description = _NUMBER_RE.sub("", text, count=1)
     # Strip stop-words and clean up
     words = [
         w for w in description.split()
@@ -198,7 +199,7 @@ def _build_detail(result: dict, period_available: float, amount: float, verdict:
 
     lines = [
         "```",
-        f"━━━━━━━ 📊 Детали ━━━━━━━",
+        "━━━━━━━ 📊 Детали ━━━━━━━",
         f"Сумма покупки:  {amount:>10,.2f}",
         f"Дневной лимит:  {limit:>10,.2f}",
         f"Доступно:       {available:>10,.2f}",
