@@ -7,6 +7,7 @@ Handles:
   • Inline-trigger: just typing an amount/description directly
 """
 import re
+from datetime import date
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
@@ -25,7 +26,6 @@ _STOP_WORDS = {"want", "buy", "for", "som", "rub", "хочу", "купить", "
 # Regex: grab numeric tokens (integer or decimal) more strictly
 _NUMBER_RE = re.compile(r"(?<!\d)(\d+(?:[.,]\d+)?)(?!\d)")
 
-
 # ─────────────── "💳 Проверить покупку" button ────────────────────
 
 @router.message(F.text == "💳 Проверить покупку")
@@ -42,14 +42,12 @@ async def ask_for_purchase(message: Message, state: FSMContext) -> None:
         reply_markup=remove_kb,
     )
 
-
 # ─────────────── FSM: waiting for purchase input ──────────────────
 
 @router.message(PurchaseStates.waiting_purchase_input)
 async def handle_purchase_fsm(message: Message, state: FSMContext) -> None:
     await state.clear()
     await _process_purchase(message)
-
 
 # ─────────────── Direct text → try to parse as purchase ───────────
 # This catches messages that DON'T match any command or button text.
@@ -64,7 +62,6 @@ async def handle_purchase_direct(message: Message, state: FSMContext) -> None:
         # Some other FSM is active — don't interfere
         return
     await _process_purchase(message)
-
 
 # ─────────────────────────── Core logic ───────────────────────────
 
@@ -99,8 +96,9 @@ async def _process_purchase(message: Message) -> None:
     reserve = user["reserve"]
     income_date = user["next_income_date"]
     period_available = user["period_available"] or max(balance - reserve, 1.0)
+    today = date.today()
 
-    result = evaluate_purchase(amount, balance, reserve, income_date)
+    result = evaluate_purchase(amount, balance, reserve, income_date, today)
 
     verdict = "approved" if result["approved"] else "blocked"
 
@@ -132,7 +130,6 @@ async def _process_purchase(message: Message) -> None:
         parse_mode="Markdown",
         reply_markup=main_menu,
     )
-
 
 # ─────────────────────────── Helpers ──────────────────────────────
 
@@ -168,7 +165,6 @@ def _parse_purchase(text: str) -> tuple[float | None, str]:
 
     return amount, description
 
-
 def _health_bar(ratio: float, length: int = 12) -> str:
     ratio = max(0.0, min(1.0, ratio))
     filled = round(ratio * length)
@@ -177,7 +173,6 @@ def _health_bar(ratio: float, length: int = 12) -> str:
     pct = int(ratio * 100)
     emoji = "🟢" if ratio > 0.6 else "🟡" if ratio > 0.3 else "🔴"
     return f"{emoji} `[{bar}]` {pct}%"
-
 
 def _build_detail(result: dict, period_available: float, amount: float, verdict: str) -> str:
     limit = result["limit"]

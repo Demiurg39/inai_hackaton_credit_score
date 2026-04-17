@@ -20,6 +20,7 @@ def evaluate_purchase(
     balance: float,
     reserve: float,
     next_income_date: str,
+    today: date | None = None,
 ) -> EvaluationResult:
     """
     Evaluate whether a purchase should be approved.
@@ -29,11 +30,13 @@ def evaluate_purchase(
         balance:          Current user balance.
         reserve:          Untouchable emergency reserve.
         next_income_date: ISO date string "YYYY-MM-DD".
+        today:            Current date (optional, defaults to date.today()).
 
     Returns:
         EvaluationResult dict with all computed fields.
     """
-    today = date.today()
+    if today is None:
+        today = date.today()
     income_date = date.fromisoformat(next_income_date)
 
     # Step 1: days until next income (minimum 1 to avoid division by zero)
