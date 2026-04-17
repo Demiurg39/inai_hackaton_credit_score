@@ -58,16 +58,49 @@ finguard/
 
 ---
 
-## Core Algorithm
+## Core Algorithm & Financial Logic
 
-```
-available    = balance - reserve
-daily_limit  = available / days_until_income
-overshoot%   = (amount - daily_limit) / daily_limit × 100
+В боте работают три основные метрики, позволяющие честно отслеживать финансовые успехи. Вся логика базируется на метриках `period_available` (изначальный бюджет на месяц) и `period_start_date`.
 
-APPROVED  if overshoot% ≤ 50%
-BLOCKED   if overshoot% > 50%
+### 1. Purchase Evaluation (Оценка конкретной покупки)
+Каждая транзакция проходит через `calculator_advanced.py`.
+```python
+available = balance - reserve
+daily_limit = available / days_until_income
+overshoot% = (amount - daily_limit) / daily_limit × 100
 ```
+**Суть:** Бот оценивает, выдержит ли текущий баланс покупку, если оставшиеся деньги "размазать" поровну на оставшиеся дни. Расчет обогащен *Fuzzy Logic* (мягким скорингом) и *Monte Carlo Simulation* (прогнозом вероятности дожить до зарплаты) для вынесения итоговых вердиктов Approved/Blocked.
+
+### 2. Financial Health (Здоровье / Healthbar)
+Отвечает на вопрос: **Идем ли мы по графику расходов?**
+```python
+total_days = next_income_date - period_start_date
+days_passed = today - period_start_date
+# Сколько реально должно было остаться на счету к этому дню:
+ideal_available = period_available * (1.0 - (days_passed / total_days))
+health = current_available / ideal_available
+```
+**Кейс для понимания:**
+Вы настроили бота: 30 000 руб. на 30 дней.
+Прошло 15 дней. В идеальном мире равномерных расходов у вас должно было остаться ровно `15 000 руб.` (`ideal_available`).
+* Если у вас по факту осталось 15 000 руб. ➔ Здоровье 100%
+* Если осталось 7 500 руб. (сорили деньгами) ➔ Здоровье 50% (полоска покраснеет)
+* Если осталось 25 000 руб. (экономили) ➔ Здоровье 100% (у вас запас прочности)
+
+### 3. Forecast (Прогноз до зарплаты)
+Рассчитывается на основе вашей **реальной исторической скорости трат**, а не абстрактного лимита.
+```python
+spent = period_available - current_available
+average_spend = spent / days_passed
+days_budget_covers = current_available / average_spend
+deficit = days_until_income - days_budget_covers
+```
+**Кейс для понимания:**
+Тот же бюджет 30 000 руб. на 30 дней.
+Прошло 10 дней. У вас осталось всего 10 000 руб. (потратили 20 000 руб.).
+Ваш средний расход `average_spend = 2000 руб./день`.
+Осталось 10 000 руб. Если продолжить так же, денег хватит на `10000 / 2000 = 5 дней`.
+Но до зарплаты ещё 20 дней! Бот честно скажет: *"Денег хватит всего на 5 дней — за 15 дней до зарплаты!"*
 
 ---
 

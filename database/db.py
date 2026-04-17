@@ -48,6 +48,14 @@ async def init_db() -> None:
             )
         except Exception:
             pass  # Column already exists
+            
+        try:
+            await db.execute(
+                "ALTER TABLE users ADD COLUMN period_start_date TEXT NOT NULL DEFAULT ''"
+            )
+        except Exception:
+            pass  # Column already exists
+            
         await db.execute("""
             CREATE TABLE IF NOT EXISTS transactions (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,

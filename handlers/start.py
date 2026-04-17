@@ -135,7 +135,9 @@ async def step_income_date(message: Message, state: FSMContext) -> None:
     days = result["days"]
     limit = result["limit"]
 
-    health_bar = _health_bar((balance - reserve) / max(balance, 1))
+    # At the exact moment of onboarding, health is 100% because no time has passed 
+    # to deviate from the ideal spending curve.
+    health_bar = _health_bar(1.0)
     await message.answer(
         f"🎉 *Настройка завершена!* Добро пожаловать в FinGuard.\n\n"
         f"📊 *Твой финансовый дашборд:*\n"
