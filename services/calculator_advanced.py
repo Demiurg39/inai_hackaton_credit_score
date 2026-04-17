@@ -111,6 +111,7 @@ services/calculator_advanced.py — Advanced financial logic for FinGuard
 
 from datetime import date
 from typing import TypedDict
+import asyncio
 import numpy as np
 
 
@@ -223,7 +224,25 @@ class EvaluationResult(TypedDict):
 #         risk_level=risk_level,
 #         days_left_mean=round(days_left_after, 1)
 #     )
-def evaluate_purchase_advanced(
+def _run_monte_carlo(
+    mean_daily_after: float,
+    std_daily: float,
+    remaining_available: float,
+    remaining_days: int,
+    num_simulations: int,
+    seed: int | None,
+) -> float:
+    """Run Monte Carlo simulation in current thread (sync)."""
+    if seed is not None:
+        np.random.seed(seed)
+    daily_spends = np.random.normal(mean_daily_after, std_daily, size=(num_simulations, remaining_days))
+    daily_spends = np.maximum(daily_spends, 0.0)  # no negative spend
+    total_future_spend = np.sum(daily_spends, axis=1)
+    survives = remaining_available >= total_future_spend
+    return float(np.mean(survives))
+
+
+async def evaluate_purchase_advanced(
     amount: float,
     balance: float,
     reserve: float,
@@ -262,15 +281,15 @@ def evaluate_purchase_advanced(
         std_daily = (available / days) * daily_variation_pct
         remaining_days = max(days - 1, 1)
 
-        if seed is not None:
-            np.random.seed(seed)
-
-        daily_spends = np.random.normal(mean_daily_after, std_daily, size=(num_simulations, remaining_days))
-        daily_spends = np.maximum(daily_spends, 0.0)  # no negative spend
-        total_future_spend = np.sum(daily_spends, axis=1)
-
-        survives = remaining_available >= total_future_spend
-        survival_probability = float(np.mean(survives))
+        survival_probability = await asyncio.to_thread(
+            _run_monte_carlo,
+            mean_daily_after,
+            std_daily,
+            remaining_available,
+            remaining_days,
+            num_simulations,
+            seed,
+        )
     else:
         survival_probability = 1.0 if new_balance >= reserve else 0.0
 

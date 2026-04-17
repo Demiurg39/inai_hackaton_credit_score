@@ -93,7 +93,7 @@ async def _process_purchase(message: Message) -> None:
 
     result = evaluate_purchase(amount, balance, reserve, income_date, today)
 
-    result = evaluate_purchase_advanced(amount, balance, reserve, income_date)
+    result = await evaluate_purchase_advanced(amount, balance, reserve, income_date)
 
     verdict = "approved" if result["approved"] else "blocked"
 
