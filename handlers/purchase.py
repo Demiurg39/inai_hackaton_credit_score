@@ -15,6 +15,7 @@ from database.models import add_transaction, get_user, update_user_balance
 from keyboards.reply import main_menu, remove_kb
 from services.calculator import evaluate_purchase
 from services.llm import get_verdict_message
+from services.triton import predict_category
 from states.fsm import PurchaseStates
 
 router = Router()
@@ -82,6 +83,11 @@ async def _process_purchase(message: Message) -> None:
             reply_markup=main_menu,
         )
         return
+
+    # Enrich description with Triton category prediction
+    category = await predict_category(description)
+    if category:
+        description = f"[{category}] {description}"
 
     if amount <= 0:
         await message.answer(
