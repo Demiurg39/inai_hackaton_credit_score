@@ -10,6 +10,8 @@ from aiogram.types import Message
 from database.models import add_transaction, get_user
 from services.calculator_advanced import evaluate_purchase_advanced
 from services.llm import get_verdict_message
+from services.triton import predict_category
+from states.fsm import PurchaseStates
 
 router = Router()
 
@@ -66,8 +68,17 @@ async def _process_purchase(message: Message) -> None:
         await message.answer("Сначала пройди настройку: /start")
         return
 
-    text = message.text or ""
-    amount, description = _parse_purchase(text)
+    # Enrich description with Triton category prediction
+    category = await predict_category(description)
+    if category:
+        description = f"[{category}] {description}"
+
+    if amount <= 0:
+        await message.answer(
+            "❌ Сумма должна быть больше нуля.",
+            reply_markup=main_menu,
+        )
+        return
 
     if amount is None or amount <= 0:
         await message.answer("Не вижу в твоём сообщении нормальной суммы. 🧐")
