@@ -229,7 +229,8 @@ def evaluate_purchase_advanced(
     reserve: float,
     next_income_date: str,
     num_simulations: int = 2000,
-    daily_variation_pct: float = 0.18
+    daily_variation_pct: float = 0.18,
+    seed: int | None = None,
 ) -> EvaluationResult:
     
     today = date.today()
@@ -260,6 +261,9 @@ def evaluate_purchase_advanced(
         mean_daily_after = remaining_available / days
         std_daily = (available / days) * daily_variation_pct
         remaining_days = max(days - 1, 1)
+
+        if seed is not None:
+            np.random.seed(seed)
 
         daily_spends = np.random.normal(mean_daily_after, std_daily, size=(num_simulations, remaining_days))
         daily_spends = np.maximum(daily_spends, 0.0)  # no negative spend
