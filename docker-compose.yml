@@ -1,0 +1,15 @@
+services:
+  bot:
+    build: .
+    container_name: finguard-bot
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    environment:
+      # These will be pulled from the shell (direnv) if set, 
+      # overriding values in .env
+      - BOT_TOKEN
+      - LLM_URL
+      - DB_PATH=/app/data/finguard.db
