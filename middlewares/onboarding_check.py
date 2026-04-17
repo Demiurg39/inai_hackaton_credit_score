@@ -21,6 +21,11 @@ _FSM_STATE_GROUPS = (OnboardingStates, SettingsStates)
 
 
 class OnboardingCheckMiddleware(BaseMiddleware):
+    def __init__(self) -> None:
+        super().__init__()
+        # Cache for users who have already finished onboarding
+        self._onboarded_cache: set[int] = set()
+
     async def __call__(
         self,
         handler: Callable[[Message, dict[str, Any]], Awaitable[Any]],
@@ -29,12 +34,17 @@ class OnboardingCheckMiddleware(BaseMiddleware):
     ) -> Any:
         user_id: int = event.from_user.id
 
+        # If user is in cache, skip DB check entirely
+        if user_id in self._onboarded_cache:
+            return await handler(event, data)
+
         # Ensure a user row always exists
         await create_user(user_id)
 
         user = await get_user(user_id)
         if user and user["onboarded"]:
-            # User is set up — pass through normally
+            # User is set up — update cache and pass through
+            self._onboarded_cache.add(user_id)
             return await handler(event, data)
 
         # User is NOT onboarded yet.

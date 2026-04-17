@@ -1,0 +1,9 @@
+.git
+.worktrees
+.venv
+__pycache__
+*.pyc
+*.db
+data/
+.env
+.envrc
