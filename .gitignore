@@ -1,6 +1,10 @@
 .env
+.envrc
+.direnv
 .venv/
 __pycache__/
 *.py[cod]
 finguard.db
 *.log
+.worktrees/
+docs/superpowers/*
