@@ -281,17 +281,22 @@ async def evaluate_purchase_advanced(
         std_daily = (available / days) * daily_variation_pct
         remaining_days = max(days - 1, 1)
 
-        survival_probability = await asyncio.to_thread(
-            _run_monte_carlo,
-            mean_daily_after,
-            std_daily,
-            remaining_available,
-            remaining_days,
-            num_simulations,
-            seed,
-        )
+        # Degenerate case: only 1 day left — Monte Carlo has no predictive power
+        if remaining_days <= 1 or remaining_available <= 0:
+            survival_probability = 0.0
+        else:
+            survival_probability = await asyncio.to_thread(
+                _run_monte_carlo,
+                mean_daily_after,
+                std_daily,
+                remaining_available,
+                remaining_days,
+                num_simulations,
+                seed,
+            )
     else:
-        survival_probability = 1.0 if new_balance >= reserve else 0.0
+        # new_balance == reserve: remaining_available is 0, survival is impossible
+        survival_probability = 0.0
 
     # Risk level (survival_probability as 0.0–1.0 fraction, same scale as fuzzy_score)
     if fuzzy_score > 0.85 and survival_probability > 0.85:
