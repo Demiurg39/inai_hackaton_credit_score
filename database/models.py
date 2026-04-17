@@ -28,8 +28,8 @@ async def create_user(user_id: int) -> None:
         await db.execute(
             """
             INSERT OR IGNORE INTO users
-                (user_id, balance, reserve, next_income_date, period_start_date, onboarded, created_at)
-            VALUES (?, 0, 0, '', '', 0, ?)
+                (user_id, balance, reserve, next_income_date, onboarded, created_at)
+            VALUES (?, 0, 0, '', 0, ?)
             """,
             (user_id, now),
         )
@@ -68,28 +68,26 @@ async def set_onboarded(
     income_date: str,
 ) -> None:
     """Finalize onboarding: save all three fields and mark onboarded=1."""
-    now_date = datetime.now(timezone.utc).date().isoformat()
     period_available = max(balance - reserve, 0.0)
     async with get_db() as db:
         await db.execute(
             """
             UPDATE users
             SET balance = ?, reserve = ?, next_income_date = ?, 
-                period_available = ?, period_start_date = ?, onboarded = 1
+                period_available = ?, onboarded = 1
             WHERE user_id = ?
             """,
-            (balance, reserve, income_date, period_available, now_date, user_id),
+            (balance, reserve, income_date, period_available, user_id),
         )
         await db.commit()
 
 
 async def reset_period_available(user_id: int, new_period_available: float) -> None:
     """Reset the period baseline (used when user updates settings manually)."""
-    now_date = datetime.now(timezone.utc).date().isoformat()
     async with get_db() as db:
         await db.execute(
-            "UPDATE users SET period_available = ?, period_start_date = ? WHERE user_id = ?",
-            (max(new_period_available, 0.0), now_date, user_id),
+            "UPDATE users SET period_available = ? WHERE user_id = ?",
+            (max(new_period_available, 0.0), user_id),
         )
         await db.commit()
 
