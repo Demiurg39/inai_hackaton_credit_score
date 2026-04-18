@@ -14,8 +14,9 @@ from aiogram.types import Message
 from database.models import add_transaction, compute_user_stats, get_user, get_user_stats, update_user_balance, upsert_category_stats
 from keyboards.reply import main_menu, remove_kb
 from services.calculator_advanced import evaluate_purchase_advanced
-from services.llm import get_verdict_message
 from services.triton import predict_category
+from services.reason_engine import build_reason
+from services.explainer import explain
 from states.fsm import PurchaseStates
 
 router = Router()
@@ -124,17 +125,9 @@ async def _process_purchase(message: Message) -> None:
     if category:
         await upsert_category_stats(user_id, category, amount)
 
-    # Build verdict message via LLM stub
-    context = {
-        "overshoot_pct": result["overshoot_pct"],
-        "days": result["days"],
-        "days_left_after": result["days_left_after"],
-        "limit": result["limit"],
-        "survival_probability": result["survival_probability"],
-        "risk_level": result["risk_level"],
-        "fuzzy_score": result["fuzzy_score"],
-    }
-    verdict_text = await get_verdict_message(description, amount, verdict, context)
+    # Build verdict message via rule-based reason engine + explainer
+    reason = build_reason(amount, result, category or "другое")
+    verdict_text = explain(reason, amount, description)
 
     # Build the detail block
     detail = _build_detail(result, period_available, amount, verdict)
