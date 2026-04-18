@@ -17,6 +17,8 @@ from aiogram.types import (
 from database.models import (
     get_recent_transactions,
     get_user,
+    get_user_stats,
+    upsert_user_stats,
     update_user_balance,
     update_user_income_date,
     update_user_reserve,
@@ -37,6 +39,7 @@ _settings_kb = InlineKeyboardMarkup(
         ],
         [
             InlineKeyboardButton(text="📅 Дата зарплаты",     callback_data="set_income"),
+            InlineKeyboardButton(text="⚖️ Риск-толерантность", callback_data="set_risk"),
         ],
     ]
 )
@@ -102,6 +105,18 @@ async def cb_set_income(call: CallbackQuery, state: FSMContext) -> None:
     )
 
 
+@router.callback_query(F.data == "set_risk")
+async def cb_set_risk(call: CallbackQuery, state: FSMContext) -> None:
+    await call.answer()
+    await state.set_state(SettingsStates.waiting_new_risk_tolerance)
+    await call.message.answer(
+        "⚖️ Установи свой риск-профиль (0.0 = строгий, 1.0 = лояльный):\n"
+        "Примеры:\n  `0.0` — максимально осторожный\n  `0.5` — сбалансированный\n  `1.0` — разрешаю многое",
+        parse_mode="Markdown",
+        reply_markup=remove_kb,
+    )
+
+
 # ─────────────────────── FSM update handlers ──────────────────────
 
 @router.message(SettingsStates.waiting_new_balance)
@@ -160,6 +175,34 @@ async def update_income_date(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
         f"✅ Дата зарплаты обновлена: *{d.strftime('%d.%m.%Y')}*",
+        parse_mode="Markdown",
+        reply_markup=main_menu,
+    )
+
+
+@router.message(SettingsStates.waiting_new_risk_tolerance)
+async def update_risk_tolerance(message: Message, state: FSMContext) -> None:
+    try:
+        val = float(message.text.replace(",", ".").strip())
+        if not (0.0 <= val <= 1.0):
+            raise ValueError()
+    except (ValueError, AttributeError):
+        await message.answer("❌ Введи число от 0.0 до 1.0.")
+        return
+    user_id = message.from_user.id
+    user = await get_user(user_id)
+    if user:
+        stats = await get_user_stats(user_id) or {}
+        await upsert_user_stats(
+            user_id,
+            avg=stats.get("avg_daily_spend", 0.0),
+            std=stats.get("std_daily_spend", 0.0),
+            velocity=stats.get("spend_velocity", 1.0),
+            tolerance=val,
+        )
+    await state.clear()
+    await message.answer(
+        f"✅ Риск-профиль: *{val:.1f}*",
         parse_mode="Markdown",
         reply_markup=main_menu,
     )

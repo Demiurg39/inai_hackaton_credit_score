@@ -18,3 +18,4 @@ class SettingsStates(StatesGroup):
     waiting_new_balance = State()
     waiting_new_reserve = State()
     waiting_new_income_date = State()
+    waiting_new_risk_tolerance = State()
