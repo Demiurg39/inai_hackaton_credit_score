@@ -166,11 +166,11 @@ async def _process_purchase(message: Message) -> None:
     period_available = user["period_available"] or max(balance - reserve, 1.0)
 
     # Enrich description with Triton category prediction
+    thinking = await message.answer("🧠 *Думаю...* Оцениваю твой запрос...")
     category = await predict_category(description)
     if category:
         description = f"[{category}] {description}"
 
-    thinking = await message.answer("🧠 *Думаю...* Оцениваю твой запрос...")
     result = await evaluate_purchase_advanced(amount, balance, reserve, income_date)
 
     verdict = "approved" if result["approved"] else "blocked"
