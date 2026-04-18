@@ -13,7 +13,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN
 from database.db import init_db, close_db
-from handlers import start, purchase, status, settings
+from handlers import start, purchase, status, settings, voice
 from middlewares.onboarding_check import OnboardingCheckMiddleware
 
 logging.basicConfig(
@@ -41,6 +41,7 @@ async def main() -> None:
     dp.include_router(start.router)
     dp.include_router(settings.router)   # settings before purchase (has buttons)
     dp.include_router(status.router)
+    dp.include_router(voice.router)
     dp.include_router(purchase.router)   # catch-all purchase parser last
 
     # ── Start polling ─────────────────────────────────────────────
