@@ -11,7 +11,7 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from database.models import add_transaction, get_user, update_user_balance
+from database.models import add_transaction, compute_user_stats, get_user, get_user_stats, update_user_balance, upsert_category_stats
 from keyboards.reply import main_menu, remove_kb
 from services.calculator_advanced import evaluate_purchase_advanced
 from services.llm import get_verdict_message
@@ -116,6 +116,13 @@ async def _process_purchase(message: Message) -> None:
     # Update balance only if approved
     if result["approved"]:
         await update_user_balance(user_id, result["new_balance"])
+
+    # Update per-user spending stats
+    await compute_user_stats(user_id)
+
+    # Upsert category stats if Triton provided a category
+    if category:
+        await upsert_category_stats(user_id, category, amount)
 
     # Build verdict message via LLM stub
     context = {
