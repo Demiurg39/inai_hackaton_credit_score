@@ -24,6 +24,7 @@ from database.models import (
     update_user_reserve,
     reset_period_available,
 )
+from database.db import get_db
 from keyboards.reply import main_menu, remove_kb
 from states.fsm import SettingsStates
 
@@ -40,6 +41,9 @@ _settings_kb = InlineKeyboardMarkup(
         [
             InlineKeyboardButton(text="📅 Дата зарплаты",     callback_data="set_income"),
             InlineKeyboardButton(text="⚖️ Риск-толерантность", callback_data="set_risk"),
+        ],
+        [
+            InlineKeyboardButton(text="🔔 Уведомления",      callback_data="set_notify"),
         ],
     ]
 )
@@ -115,6 +119,38 @@ async def cb_set_risk(call: CallbackQuery, state: FSMContext) -> None:
         parse_mode="Markdown",
         reply_markup=remove_kb,
     )
+
+
+@router.callback_query(F.data == "set_notify")
+async def cb_set_notify(call: CallbackQuery) -> None:
+    await call.answer()
+    user_id = call.from_user.id
+    user = await get_user(user_id)
+    if not user:
+        await call.message.answer("Сначала /start")
+        return
+
+    new_state = not bool(user.get("notify_enabled", False))
+    async with get_db() as db:
+        await db.execute(
+            "UPDATE users SET notify_enabled = ? WHERE user_id = ?",
+            (int(new_state), user_id),
+        )
+        await db.commit()
+
+    if new_state:
+        await call.message.answer(
+            "🔔 *Уведомления включены!*\n\n"
+            "Каждое утро в 10:00 буду присылать тебе краткий статус.",
+            parse_mode="Markdown",
+            reply_markup=_settings_kb,
+        )
+    else:
+        await call.message.answer(
+            "🔕 *Уведомления выключены.*",
+            parse_mode="Markdown",
+            reply_markup=_settings_kb,
+        )
 
 
 # ─────────────────────── FSM update handlers ──────────────────────
