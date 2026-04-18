@@ -95,6 +95,10 @@ async def _migrate_users(conn: aiosqlite.Connection) -> None:
     await _add_column(conn, "spend_velocity", "REAL NOT NULL DEFAULT 1.0")
     await _add_column(conn, "risk_tolerance", "REAL NOT NULL DEFAULT 0.5")
     await _add_column(conn, "last_computed_at", "TEXT NOT NULL DEFAULT ''")
+    # --- Notification columns ---
+    await _add_column(conn, "notify_enabled", "INTEGER NOT NULL DEFAULT 0")
+    await _add_column(conn, "notify_time", "TEXT NOT NULL DEFAULT '10:00'")
+    await _add_column(conn, "last_notification_date", "TEXT NOT NULL DEFAULT ''")
 
 
 async def _add_column(conn: aiosqlite.Connection, column: str, typedecl: str) -> None:

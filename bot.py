@@ -13,8 +13,9 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN
 from database.db import init_db, close_db
-from handlers import start, purchase, status, settings, voice
+from handlers import start, purchase, status, settings, voice, notifications
 from middlewares.onboarding_check import OnboardingCheckMiddleware
+from middlewares.notification import NotificationMiddleware
 
 logging.basicConfig(
     level=logging.INFO,
@@ -36,12 +37,14 @@ async def main() -> None:
 
     # ── Middleware ────────────────────────────────────────────────
     dp.message.middleware(OnboardingCheckMiddleware())
+    dp.message.middleware(NotificationMiddleware(lambda uid: 0.0))  # placeholder; real value set at runtime
 
     # ── Routers (order matters: more specific first) ──────────────
     dp.include_router(start.router)
     dp.include_router(settings.router)   # settings before purchase (has buttons)
     dp.include_router(status.router)
     dp.include_router(voice.router)
+    dp.include_router(notifications.router)
     dp.include_router(purchase.router)   # catch-all purchase parser last
 
     # ── Start polling ─────────────────────────────────────────────

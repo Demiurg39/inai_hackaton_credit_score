@@ -7,6 +7,7 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemo
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
         [
+            KeyboardButton(text="🔔 Уведомления"),
             KeyboardButton(text="💳 Проверить покупку"),
             KeyboardButton(text="🎮 Что если?"),
         ],

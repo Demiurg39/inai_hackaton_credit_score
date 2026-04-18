@@ -7,7 +7,7 @@ Handles:
   • Inline-trigger: just typing an amount/description directly
 """
 import re
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.filters import Command, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery

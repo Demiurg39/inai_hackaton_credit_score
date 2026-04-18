@@ -223,6 +223,33 @@ async def upsert_category_stats(
         await db.commit()
 
 
+async def get_category_threshold(user_id: int, category: str) -> aiosqlite.Row | None:
+    """Get custom threshold for a user+category, or None if not set."""
+    async with get_db() as db:
+        async with db.execute(
+            "SELECT * FROM user_category_threshold WHERE user_id = ? AND category = ?",
+            (user_id, category),
+        ) as cursor:
+            return await cursor.fetchone()
+
+
+async def upsert_category_threshold(
+    user_id: int,
+    category: str,
+    fuzzy_threshold: float,
+    survival_threshold: float,
+) -> None:
+    """Set or update custom threshold for a user+category."""
+    async with get_db() as db:
+        await db.execute(
+            """INSERT OR REPLACE INTO user_category_threshold
+            (user_id, category, fuzzy_threshold, survival_threshold)
+            VALUES (?, ?, ?, ?)""",
+            (user_id, category, fuzzy_threshold, survival_threshold),
+        )
+        await db.commit()
+
+
 async def get_recurring_spends(user_id: int) -> list[aiosqlite.Row]:
     """Return all recurring spend rows for a user."""
     async with get_db() as db:

@@ -10,6 +10,7 @@ from aiogram.types import Message
 from database.models import get_user, get_user_stats, get_recurring_spends
 from keyboards.reply import main_menu
 from services.calculator import evaluate_purchase
+from services.reserve_advisor import compute_recommended_reserve
 
 router = Router()
 
@@ -91,6 +92,46 @@ async def cmd_status(message: Message) -> None:
             )
         except (ValueError, TypeError, KeyError):
             pass
+
+    # Recommended reserve section
+    reserve_lines = []
+    if recurring:
+        recurring_list = [{
+            "amount": r["avg_amount"],
+            "interval_days": r["interval_days"],
+            "confidence": r["confidence"],
+            "category": r["category"],
+        } for r in recurring]
+
+        rec = compute_recommended_reserve(
+            balance=user["balance"],
+            current=user["reserve"],
+            recurring_spends=recurring_list,
+            avg_daily_spend=user_stats.get("avg_daily_spend", 0.0) if user_stats else 0.0,
+        )
+
+        if rec["current"] < rec["recommended"] * 0.9:
+            reserve_lines.append("")
+            reserve_lines.append(f"📈 Рекомендуемый резерв: {rec['recommended']:,.0f}₽")
+            for b in rec["breakdown"]:
+                reserve_lines.append(f"  {b}")
+            reserve_lines.append("")
+            reserve_lines.append(f"🔗 [📈 Поднять до {rec['recommended']:,.0f}₽?]")
+
+    status_text = (
+        f"📊 *Твой финансовый статус*\n\n"
+        f"  💰 Баланс:        `{balance:,.2f}`\n"
+        f"  🛡 Резерв:        `{reserve:,.2f}`\n"
+        f"  ✅ Доступно:      `{available:,.2f}`\n"
+        f"  🎯 Дневной лимит: `{limit:,.2f}`\n"
+        f"  📅 До зарплаты:   `{days}` дн. "
+        f"(_{ income_date.strftime('%d.%m.%Y')}_)\n\n"
+        f"💚 Финансовое здоровье:\n{bar}\n\n"
+        f"{forecast}"
+        f"{stats_lines}"
+        f"{recurring_lines}"
+        + "".join(reserve_lines)
+    )
 
     await message.answer(
         f"📊 *Твой финансовый статус*\n\n"
