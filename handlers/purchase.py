@@ -8,13 +8,14 @@ Handles:
 """
 import re
 from aiogram import F, Router
-from aiogram.filters import Command
+from aiogram.filters import Command, F
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 from database.models import add_transaction, compute_user_stats, get_user, get_user_stats, update_user_balance, upsert_category_stats
 from keyboards.reply import main_menu, remove_kb
 from services.calculator_advanced import evaluate_purchase_advanced
+from services.llm import parse_purchase_with_llm, LLMError
 from services.triton import predict_category
 from services.reason_engine import build_reason
 from services.explainer import explain
@@ -128,7 +129,26 @@ async def handle_playground(message: Message, state: FSMContext) -> None:
     )
     await state.clear()
 
-# ─────────────────────────── Core logic ───────────────────────────
+# ─────────────── Core logic ───────────────────────────
+
+@router.callback_query(F.data.startswith("llm_parse:"))
+async def handle_llm_reparse(callback: CallbackQuery, state: FSMContext) -> None:
+    original_text = callback.data.split(":", 1)[1]
+    await callback.message.edit_reply_markup(reply_markup=None)
+
+    try:
+        amount, description = await parse_purchase_with_llm(original_text)
+    except LLMError:
+        await callback.message.answer(
+            "❌ LLM недоступен. Попробуй позже.",
+            reply_markup=main_menu,
+        )
+        return
+
+    original_message = callback.message
+    original_message.text = f"{amount} {description}"
+    await _process_purchase(original_message)
+
 
 async def _process_purchase(message: Message) -> None:
     user_id = message.from_user.id
@@ -196,10 +216,14 @@ async def _process_purchase(message: Message) -> None:
     if result["approved"] and result["new_balance"] < reserve:
         warn = "\n\n⚠️ *Внимание:* После этой покупки баланс упадёт ниже резерва!"
 
+    inline_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❌ Сумма неверна", callback_data=f"llm_parse:{text}")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")],
+    ])
     await message.answer(
         f"{verdict_text}\n\n{detail}{warn}",
         parse_mode="Markdown",
-        reply_markup=main_menu,
+        reply_markup=inline_kb,
     )
 
 
