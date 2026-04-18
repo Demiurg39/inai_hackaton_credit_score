@@ -130,7 +130,7 @@ async def cb_set_notify(call: CallbackQuery) -> None:
         await call.message.answer("Сначала /start")
         return
 
-    new_state = not bool(user.get("notify_enabled", False))
+    new_state = not bool(user["notify_enabled"])
     async with get_db() as db:
         await db.execute(
             "UPDATE users SET notify_enabled = ? WHERE user_id = ?",
