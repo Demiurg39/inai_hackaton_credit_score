@@ -71,6 +71,17 @@ async def init_db() -> None:
         )
     """)
 
+    # --- Per-category risk thresholds ---
+    await _db_connection.execute("""
+        CREATE TABLE IF NOT EXISTS user_category_threshold (
+            user_id             INTEGER NOT NULL,
+            category            TEXT    NOT NULL,
+            fuzzy_threshold     REAL    NOT NULL DEFAULT 0.52,
+            survival_threshold  REAL    NOT NULL DEFAULT 0.65,
+            PRIMARY KEY (user_id, category)
+        )
+    """)
+
     await _db_connection.commit()
 
 
