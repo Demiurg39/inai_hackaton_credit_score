@@ -29,7 +29,7 @@ async def init_db() -> None:
         )
     """)
     # --- Non-destructive migrations for existing DBs ---
-    _migrate_users(_db_connection)
+    await _migrate_users(_db_connection)
 
     # --- Transactions table ---
     await _db_connection.execute("""
@@ -66,29 +66,30 @@ async def init_db() -> None:
             last_amount     REAL    NOT NULL DEFAULT 0,
             last_date       TEXT    NOT NULL DEFAULT '',
             confidence      REAL    NOT NULL DEFAULT 0,
-            next_expected   TEXT    NOT NULL DEFAULT ''
+            next_expected   TEXT    NOT NULL DEFAULT '',
+            UNIQUE (user_id, category)
         )
     """)
 
     await _db_connection.commit()
 
 
-def _migrate_users(conn: aiosqlite.Connection) -> None:
+async def _migrate_users(conn: aiosqlite.Connection) -> None:
     """Add missing columns to users table (non-destructive migrations)."""
-    _add_column(conn, "period_available", "REAL NOT NULL DEFAULT 0")
-    _add_column(conn, "period_start_date", "TEXT NOT NULL DEFAULT ''")
+    await _add_column(conn, "period_available", "REAL NOT NULL DEFAULT 0")
+    await _add_column(conn, "period_start_date", "TEXT NOT NULL DEFAULT ''")
     # --- Personalized stats columns ---
-    _add_column(conn, "avg_daily_spend", "REAL NOT NULL DEFAULT 0")
-    _add_column(conn, "std_daily_spend", "REAL NOT NULL DEFAULT 0")
-    _add_column(conn, "spend_velocity", "REAL NOT NULL DEFAULT 1.0")
-    _add_column(conn, "risk_tolerance", "REAL NOT NULL DEFAULT 0.5")
-    _add_column(conn, "last_computed_at", "TEXT NOT NULL DEFAULT ''")
+    await _add_column(conn, "avg_daily_spend", "REAL NOT NULL DEFAULT 0")
+    await _add_column(conn, "std_daily_spend", "REAL NOT NULL DEFAULT 0")
+    await _add_column(conn, "spend_velocity", "REAL NOT NULL DEFAULT 1.0")
+    await _add_column(conn, "risk_tolerance", "REAL NOT NULL DEFAULT 0.5")
+    await _add_column(conn, "last_computed_at", "TEXT NOT NULL DEFAULT ''")
 
 
-def _add_column(conn: aiosqlite.Connection, column: str, typedecl: str) -> None:
+async def _add_column(conn: aiosqlite.Connection, column: str, typedecl: str) -> None:
     """Add a column to users table if it doesn't exist."""
     try:
-        conn.execute(f"ALTER TABLE users ADD COLUMN {column} {typedecl}")
+        await conn.execute(f"ALTER TABLE users ADD COLUMN {column} {typedecl}")
     except Exception:
         pass  # Column already exists
 
