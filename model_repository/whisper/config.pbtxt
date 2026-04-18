@@ -1,0 +1,23 @@
+name: "whisper"
+backend: "python"
+max_batch_size: 1
+dynamic_batching { }
+input [
+  {
+    name: "audio_bytes"
+    data_type: TYPE_STRING
+    dims: [ 1 ]
+  }
+]
+output [
+  {
+    name: "transcript"
+    data_type: TYPE_STRING
+    dims: [ 1 ]
+  }
+]
+instance_group [
+  {
+    kind: KIND_GPU
+  }
+]
