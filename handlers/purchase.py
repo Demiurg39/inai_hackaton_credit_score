@@ -117,10 +117,12 @@ async def handle_playground(message: Message, state: FSMContext) -> None:
 
     result = await evaluate_purchase_advanced(amount, balance, reserve, income_date)
 
+    thinking = await message.answer("🧠 *Думаю...* Симулирую...")
     category = await predict_category(description)
     reason = build_reason(amount, result, category or "другое")
     verdict_text = explain(reason, amount, description)
 
+    await thinking.delete()
     await message.answer(
         f"🎮 *Результат симуляции:*\n\n{verdict_text}\n\n_Это только симуляция. Баланс не изменился._",
         parse_mode="Markdown",
@@ -168,6 +170,7 @@ async def _process_purchase(message: Message) -> None:
     if category:
         description = f"[{category}] {description}"
 
+    thinking = await message.answer("🧠 *Думаю...* Оцениваю твой запрос...")
     result = await evaluate_purchase_advanced(amount, balance, reserve, income_date)
 
     verdict = "approved" if result["approved"] else "blocked"
@@ -197,6 +200,7 @@ async def _process_purchase(message: Message) -> None:
     if result["approved"] and result["new_balance"] < reserve:
         warn = "\n\n⚠️ *Внимание:* После этой покупки баланс упадёт ниже резерва!"
 
+    await thinking.delete()
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")],
     ])
