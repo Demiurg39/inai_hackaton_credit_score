@@ -4,9 +4,15 @@ services:
       context: .
       dockerfile: triton.Dockerfile
     container_name: score-triton
-    volumes:
-      - ./model_repository:/models
-    command: ["tritonserver", "--model-repository=/models"]
+    command: [
+      "tritonserver",
+      "--model-repository=s3://${S3_BUCKET}/${S3_MODEL_PATH}",
+      "--s3-endpoint=${S3_ENDPOINT}",
+      "--s3-use-ssl=true",
+      "--s3-region=auto",
+      "--s3-access-key-id=${S3_ACCESS_KEY}",
+      "--s3-secret-access-key=${S3_SECRET_KEY}"
+    ]
     ports:
       - "8000:8000"
       - "8001:8001"
