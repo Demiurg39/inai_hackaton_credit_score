@@ -1,0 +1,18 @@
+[project]
+name = "hackaton-credit-score"
+version = "0.1.0"
+# TODO: Write valid description
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "demiurg39", email = "chiryagov2014@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+hackaton-credit-score = "hackaton_credit_score:main"
+
+[build-system]
+requires = ["uv_build>=0.11.6,<0.12.0"]
+build-backend = "uv_build"
