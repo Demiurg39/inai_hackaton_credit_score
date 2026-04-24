@@ -11,4 +11,4 @@ TRITON_URL: str = os.getenv(
     "http://triton:8000/v2/models/score_model/infer"
 )
 HOST: str = os.getenv("HOST", "0.0.0.0")
-PORT: int = int(os.getenv("PORT", "8000"))
+PORT: int = int(os.getenv("PORT", "8080"))
