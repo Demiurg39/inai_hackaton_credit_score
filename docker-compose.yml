@@ -1,24 +1,9 @@
 services:
-  bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: finguard-bot
-    environment:
-      - BOT_TOKEN=${BOT_TOKEN}
-      - LLM_URL=${LLM_URL:-http://localhost:8000/v1/chat}
-      - TRITON_URL=http://triton:8000/v2/models/category_model/infer
-    depends_on:
-      - triton
-    ports:
-      - "8080:8080"
-    command: ["python", "bot.py"]
-
   triton:
     build:
       context: .
       dockerfile: triton.Dockerfile
-    container_name: finguard-triton
+    container_name: score-triton
     volumes:
       - ./model_repository:/models
     command: ["tritonserver", "--model-repository=/models"]
@@ -31,3 +16,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: score-api
+    environment:
+      - TRITON_URL=http://triton:8000/v2/models/score_model/infer
+      - HOST=0.0.0.0
+      - PORT=8000
+    depends_on:
+      - triton
+    ports:
+      - "8003:8000"
+    command: ["python", "main.py"]
