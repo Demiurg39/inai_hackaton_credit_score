@@ -61,7 +61,13 @@
   in {
     devShells = forAllSystems (
       system: let
-        pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfreePredicate = pkg:
+            builtins.elem (lib.getName pkg) [
+              "claude-code"
+            ];
+        };
         pythonSet = pythonSets.${system}.overrideScope editableOverlay;
         virtualenv = pythonSet.mkVirtualEnv "hackaton-credit-scoring-dev-env" workspace.deps.all;
       in {
@@ -69,6 +75,7 @@
           packages = [
             virtualenv
             pkgs.uv
+            pkgs.claude-code
           ];
           env = {
             UV_NO_SYNC = "1";
